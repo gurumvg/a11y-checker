@@ -1,0 +1,1285 @@
+var A11yChecker = (function () {
+	'use strict';
+
+	const constants = {};
+
+	constants.inputs  = ['text', 'password', 'textarea', 'email', 'number', 'url', 'string', 'search'];
+
+	constants.contained = [
+		'a',
+		'button',
+		'[role="button"]',
+		'[type="button"]',
+	];
+
+	constants.noNameAttrs = [
+		'[aria-label]',
+		'[aria-labelledby]',
+		'[title]',
+		'[placeholder]',
+		'[alt]',
+	];
+
+	constants.actionable = [
+		'a',
+		'input',
+		'button',
+		'[role="button"]',
+		'[tabindex="0"]',
+	];
+
+	constants.labelable = [
+		// 'button',
+		'input:not([type="hidden"])',
+		'keygen',
+		'meter',
+		'output',
+		'progress',
+		'select',
+		'textarea',
+	];
+
+	constants.hidden = [
+		'[type="hidden"]',
+		'[aria-hidden="true"]',
+	];
+
+	// check if element is accessible for AT
+	function isElementAccessible(elem) {
+	    if (!elem) return false;
+
+	    if (elem.nodeType === 8 || elem.nodeType === 3) //ignore comment or text node (?)
+	        return false;
+
+	    if (elem.matches(constants.hidden))
+	        return false;
+
+	    
+	    var elemStyle = window.getComputedStyle(elem);
+	    if (elemStyle.display === "none")
+	        return false;
+
+	    if (elemStyle.visibility === "hidden")
+	        return false;
+
+	    return true; //default
+	}
+
+	function isInViewport(elem) {
+	    var rect = elem.getBoundingClientRect();
+	    var flagg = true;
+
+	    flagg = (
+	        rect.top >= 0 &&
+	        rect.left >= 0 &&
+	        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+	        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+
+	    );
+
+	    //above code doesn't work for iframe documents
+	    if(flagg)
+	        flagg = (elem.className.indexOf('sr-only') === -1);
+
+	    return flagg;
+
+	}
+
+	function isActionable(elem) {
+	    var selector = constants.actionable.join(',');
+	    return elem.matches(selector);
+	}
+
+	function isLabelable(elem) {
+	    var selector = constants.labelable.join(',');
+	    return elem.matches(selector);
+	}
+
+	function isContained(elem) {
+	    var selector = constants.contained.join(',');
+	    return elem.matches(selector);
+	}
+
+	function sanitize(str) {
+	    return str.replace(/[^a-zA-Z0-9 ]/g, "").toLowerCase().trim();
+	}
+
+	function getElementLabel(elem) {
+	    elem.tagName.toLowerCase();
+
+	    if (isContained(elem))
+	        return getElementCumulativeLabel(elem);
+
+	    else if (isLabelable(elem)) {
+	        var strings = Array.prototype.map.call(elem.labels, function(label) {
+	            return getElementCumulativeLabel(label);
+	        });
+	        return strings.join(' ');        
+	    }
+
+	    return '';
+	}
+
+	function getElementCumulativeLabel(elem) {
+	    var children = elem.childNodes;
+	    var elemLabel = '';
+
+	    for (var i = 0; i < children.length; i++) {
+	        var childNode = children[i];
+
+	        if (childNode.nodeType === 3) //text node
+	            elemLabel += childNode.textContent;
+	        else if (isElementAccessible(childNode) && isInViewport(childNode))
+	            elemLabel += getElementCumulativeLabel(childNode);
+	    }
+
+	    return elemLabel;
+	}
+
+	function getLabel(elem) {
+
+	    if (isContained(elem))
+	        if(!elem.matches(constants.noNameAttrs))
+	            return '';
+
+	    return getElementLabel(elem);
+	}
+
+	function createCommonjsModule(fn) {
+	  var module = { exports: {} };
+		return fn(module, module.exports), module.exports;
+	}
+
+	var constants$1 = createCommonjsModule(function (module, exports) {
+	exports.attributes = {
+		// widget
+		'autocomplete': 'token',
+		'checked': 'tristate',
+		'current': 'token',
+		'disabled': 'bool',
+		'expanded': 'bool-undefined',
+		'haspopup': 'token',
+		'hidden': 'bool',  // !
+		'invalid': 'token',
+		'keyshortcuts': 'string',
+		'label': 'string',
+		'level': 'int',
+		'modal': 'bool',
+		'multiline': 'bool',
+		'multiselectable': 'bool',
+		'orientation': 'token',
+		'placeholder': 'string',
+		'pressed': 'tristate',
+		'readonly': 'bool',
+		'required': 'bool',
+		'roledescription': 'string',
+		'selected': 'bool-undefined',
+		'valuemax': 'number',
+		'valuemin': 'number',
+		'valuenow': 'number',
+		'valuetext': 'string',
+
+		// live
+		'atomic': 'bool',
+		'busy': 'bool',
+		'live': 'token',
+		'relevant': 'token-list',
+
+		// dragndrop
+		'dropeffect': 'token-list',
+		'grabbed': 'bool-undefined',
+
+		// relationship
+		'activedescendant': 'id',
+		'colcount': 'int',
+		'colindex': 'int',
+		'colspan': 'int',
+		'controls': 'id-list',
+		'describedby': 'id-list',
+		'details': 'id',
+		'errormessage': 'id',
+		'flowto': 'id-list',
+		'labelledby': 'id-list',
+		'owns': 'id-list',
+		'posinset': 'int',
+		'rowcount': 'int',
+		'rowindex': 'int',
+		'rowspan': 'int',
+		'setsize': 'int',
+		'sort': 'token',
+	};
+
+	exports.attributeStrongMapping = {
+		'disabled': 'disabled',
+		'placeholder': 'placeholder',
+		'readonly': 'readOnly',
+		'required': 'required',
+	};
+
+	exports.attributeWeakMapping = {
+		'checked': 'checked',
+		'colspan': 'colSpan',
+		'expanded': 'open',
+		'multiselectable': 'multiple',
+		'rowspan': 'rowSpan',
+		'selected': 'selected',
+	};
+
+	// https://www.w3.org/TR/html-aam-1.0/#html-element-role-mappings
+	// https://www.w3.org/TR/wai-aria/roles
+	exports.roles = {
+		alert: {
+			childRoles: ['alertdialog'],
+			defaults: {
+				'live': 'assertive',
+				'atomic': true,
+			},
+		},
+		article: {
+			selectors: ['article'],
+		},
+		button: {
+			selectors: [
+				'button',
+				'input[type="button"]',
+				'input[type="image"]',
+				'input[type="reset"]',
+				'input[type="submit"]',
+				'summary',
+			],
+			nameFromContents: true,
+		},
+		cell: {
+			selectors: ['td'],
+			childRoles: ['gridcell', 'rowheader'],
+		},
+		checkbox: {
+			selectors: ['input[type="checkbox"]'],
+			childRoles: ['menuitemcheckbox', 'switch'],
+			nameFromContents: true,
+			defaults: {
+				'checked': 'false',
+			},
+		},
+		columnheader: {
+			selectors: ['th[scope="col"]'],
+			nameFromContents: true,
+		},
+		combobox: {
+			selectors: [
+			'input:not([type])[list]',
+				'input[type="email"][list]',
+				'input[type="search"][list]',
+				'input[type="tel"][list]',
+				'input[type="text"][list]',
+				'input[type="url"][list]',
+				'select:not([size]):not([multiple])',
+				'select[size="0"]:not([multiple])',
+				'select[size="1"]:not([multiple])',
+			],
+			defaults: {
+				'expanded': false,
+				'haspopup': 'listbox',
+			},
+		},
+		command: {
+			childRoles: ['button', 'link', 'menuitem'],
+		},
+		complementary: {
+			selectors: ['aside'],
+		},
+		composite: {
+			childRoles: ['grid', 'select', 'spinbutton', 'tablist'],
+		},
+		definition: {
+			selectors: ['dd'],
+		},
+		dialog: {
+			selectors: ['dialog'],
+			childRoles: ['alertdialog'],
+		},
+		'doc-backlink': {
+			nameFromContents: true,
+		},
+		'doc-biblioref': {
+			nameFromContents: true,
+		},
+		'doc-glossref': {
+			nameFromContents: true,
+		},
+		'doc-noteref': {
+			nameFromContents: true,
+		},
+		document: {
+			selectors: ['body'],
+			childRoles: ['article', 'graphics-document'],
+		},
+		figure: {
+			selectors: ['figure'],
+		},
+		form: {
+			selectors: ['form[aria-label]', 'form[aria-labelledby]', 'form[title]'],
+		},
+		grid: {
+			childRoles: ['treegrid'],
+		},
+		gridcell: {
+			childRoles: ['columnheader', 'rowheader'],
+			nameFromContents: true,
+		},
+		group: {
+			selectors: ['details', 'optgroup'],
+			childRoles: ['row', 'select', 'toolbar', 'graphics-object'],
+		},
+		heading: {
+			selectors: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+			nameFromContents: true,
+			defaults: {
+				'level': 2,
+			},
+		},
+		img: {
+			selectors: ['img:not([alt=""])', 'graphics-symbol'],
+			childRoles: ['doc-cover'],
+		},
+		input: {
+			childRoles: ['checkbox', 'option', 'radio', 'slider', 'spinbutton', 'textbox'],
+		},
+		landmark: {
+			childRoles: [
+				'banner',
+				'complementary',
+				'contentinfo',
+				'doc-acknowledgments',
+				'doc-afterword',
+				'doc-appendix',
+				'doc-bibliography',
+				'doc-chapter',
+				'doc-conclusion',
+				'doc-credits',
+				'doc-endnotes',
+				'doc-epilogue',
+				'doc-errata',
+				'doc-foreword',
+				'doc-glossary',
+				'doc-introduction',
+				'doc-part',
+				'doc-preface',
+				'doc-prologue',
+				'form',
+				'main',
+				'navigation',
+				'region',
+				'search',
+			],
+		},
+		link: {
+			selectors: ['a[href]', 'area[href]', 'link[href]'],
+			childRoles: ['doc-backlink', 'doc-biblioref', 'doc-glossref', 'doc-noteref'],
+			nameFromContents: true,
+		},
+		list: {
+			selectors: ['dl', 'ol', 'ul'],
+			childRoles: ['directory', 'feed'],
+		},
+		listbox: {
+			selectors: [
+				'select[multiple]',
+				'select[size]:not([size="0"]):not([size="1"])',
+			],
+			defaults: {
+				'orientation': 'vertical',
+			},
+		},
+		listitem: {
+			selectors: ['dt', 'ul > li', 'ol > li'],
+			childRoles: ['doc-biblioentry', 'doc-endnote', 'treeitem'],
+		},
+		log: {
+			defaults: {
+				'live': 'polite',
+			},
+		},
+		main: {
+			selectors: ['main'],
+		},
+		math: {
+			selectors: ['math'],
+		},
+		menu: {
+			selectors: ['menu[type="context"]'],
+			childRoles: ['menubar'],
+			defaults: {
+				'orientation': 'vertical',
+			},
+		},
+		menubar: {
+			defaults: {
+				'orientation': 'horizontal',
+			},
+		},
+		menuitem: {
+			selectors: ['menuitem[type="command"]'],
+			childRoles: ['menuitemcheckbox'],
+			nameFromContents: true,
+		},
+		menuitemcheckbox: {
+			selectors: ['menuitem[type="checkbox"]'],
+			childRoles: ['menuitemradio'],
+			nameFromContents: true,
+			defaults: {
+				'checked': 'false',
+			},
+		},
+		menuitemradio: {
+			selectors: ['menuitem[type="radio"]'],
+			nameFromContents: true,
+			defaults: {
+				'checked': 'false',
+			},
+		},
+		navigation: {
+			selectors: ['nav'],
+			childRoles: ['doc-index', 'doc-pagelist', 'doc-toc'],
+		},
+		note: {
+			childRoles: ['doc-notice', 'doc-tip'],
+		},
+		option: {
+			selectors: ['option'],
+			childRoles: ['treeitem'],
+			nameFromContents: true,
+			defaults: {
+				'selected': 'false',
+			},
+		},
+		progressbar: {
+			selectors: ['progress'],
+		},
+		radio: {
+			selectors: ['input[type="radio"]'],
+			childRoles: ['menuitemradio'],
+			nameFromContents: true,
+			defaults: {
+				'checked': 'false',
+			},
+		},
+		range: {
+			childRoles: ['progressbar', 'scrollbar', 'slider', 'spinbutton'],
+		},
+		region: {
+			selectors: ['section[aria-label]', 'section[aria-labelledby]', 'section[title]'],
+		},
+		roletype: {
+			childRoles: ['structure', 'widget', 'window'],
+		},
+		row: {
+			selectors: ['tr'],
+			nameFromContents: true,
+		},
+		rowheader: {
+			selectors: ['th[scope="row"]'],
+			nameFromContents: true,
+		},
+		rowgroup: {
+			selectors: ['tbody', 'thead', 'tfoot'],
+			nameFromContents: true,
+		},
+		scrollbar: {
+			defaults: {
+				'orientation': 'vertical',
+				'valuemin': 0,
+				'valuemax': 100,
+				// FIXME: halfway between actual valuemin and valuemax
+				'valuenow': 50,
+			},
+		},
+		searchbox: {
+			selectors: ['input[type="search"]:not([list])'],
+		},
+		section: {
+			childRoles: [
+				'alert',
+				'cell',
+				'definition',
+				'doc-abstract',
+				'doc-colophon',
+				'doc-credit',
+				'doc-dedication',
+				'doc-epigraph',
+				'doc-example',
+				'doc-footnote',
+				'doc-qna',
+				'figure',
+				'group',
+				'img',
+				'landmark',
+				'list',
+				'listitem',
+				'log',
+				'marquee',
+				'math',
+				'note',
+				'status',
+				'table',
+				'tabpanel',
+				'term',
+				'tooltip',
+			],
+		},
+		sectionhead: {
+			childRoles: [
+				'columnheader',
+				'doc-subtitle',
+				'heading',
+				'rowheader',
+				'tab',
+			],
+			nameFromContents: true,
+		},
+		select: {
+			childRoles: ['combobox', 'listbox', 'menu', 'radiogroup', 'tree'],
+		},
+		separator: {
+			selectors: ['hr'],
+			childRoles: ['doc-pagebreak'],
+			defaults: {
+				'orientation': 'horizontal',
+				'valuemin': 0,
+				'valuemax': 100,
+				'valuenow': 50,
+			},
+		},
+		slider: {
+			selectors: ['input[type="range"]'],
+			defaults: {
+				'orientation': 'horizontal',
+				'valuemin': 0,
+				'valuemax': 100,
+				// FIXME: halfway between actual valuemin and valuemax
+				'valuenow': 50,
+			},
+		},
+		spinbutton: {
+			selectors: ['input[type="number"]'],
+			defaults: {
+				// FIXME: no valuemin/valuemax
+				'valuenow': 0,
+			},
+		},
+		status: {
+			selectors: ['output'],
+			childRoles: ['timer'],
+			defaults: {
+				'live': 'polite',
+				'atomic': true,
+			},
+		},
+		switch: {
+			nameFromContents: true,
+			defaults: {
+				'checked': false,
+			},
+		},
+		structure: {
+			childRoles: [
+				'application',
+				'document',
+				'none',
+				'presentation',
+				'rowgroup',
+				'section',
+				'sectionhead',
+				'separator',
+			],
+		},
+		tab: {
+			nameFromContents: true,
+			defaults: {
+				'selected': false,
+			},
+		},
+		table: {
+			selectors: ['table'],
+			childRoles: ['grid'],
+		},
+		tablist: {
+			defaults: {
+				'orientation': 'horizontal',
+			},
+		},
+		term: {
+			selectors: ['dfn', 'dt'],
+		},
+		textbox: {
+			selectors: [
+				'input:not([type]):not([list])',
+				'input[type="email"]:not([list])',
+				'input[type="tel"]:not([list])',
+				'input[type="text"]:not([list])',
+				'input[type="url"]:not([list])',
+				'textarea',
+			],
+			childRoles: ['searchbox'],
+		},
+		toolbar: {
+			defaults: {
+				'orientation': 'horizontal',
+			},
+		},
+		tooltip: {
+			nameFromContents: true,
+		},
+		tree: {
+			childRoles: ['treegrid'],
+			defaults: {
+				'orientation': 'vertical',
+			},
+		},
+		treeitem: {
+			nameFromContents: true,
+		},
+		widget: {
+			childRoles: [
+				'command',
+				'composite',
+				'gridcell',
+				'input',
+				'range',
+				'row',
+				'separator',
+				'tab',
+			],
+		},
+		window: {
+			childRoles: ['dialog'],
+		},
+	};
+
+	exports.scoped = [
+		'main *',
+		// https://www.w3.org/TR/html/dom.html#sectioning-content-2
+		'article *', 'aside *', 'nav *', 'section *',
+		// https://www.w3.org/TR/html/sections.html#sectioning-roots
+		'blockquote *', 'details *', 'dialog *', 'fieldset *', 'figure *', 'td *',
+	].join(',');
+
+	var getSubRoles = function(role) {
+		var children = (exports.roles[role] || {}).childRoles || [];
+		var descendents = children.map(getSubRoles);
+
+		var result = [role];
+
+		descendents.forEach(function(list) {
+			list.forEach(function(r) {
+				if (!result.includes(r)) {
+					result.push(r);
+				}
+			});
+		});
+
+		return result;
+	};
+
+	exports.attrsWithDefaults = [];
+
+	for (var role in exports.roles) {
+		exports.roles[role].subRoles = getSubRoles(role);
+		for (var key in exports.roles[role].defaults) {
+			if (!exports.attrsWithDefaults.includes(key)) {
+				exports.attrsWithDefaults.push(key);
+			}
+		}
+	}
+	exports.roles['none'] = exports.roles['none'] || {};
+	exports.roles['none'].subRoles = ['none', 'presentation'];
+	exports.roles['presentation'] = exports.roles['presentation'] || {};
+	exports.roles['presentation'].subRoles = ['presentation', 'none'];
+
+	exports.nameFromDescendant = {
+		'figure': 'figcaption',
+		'table': 'caption',
+		'fieldset': 'legend',
+	};
+
+	exports.nameDefaults = {
+		'input[type="submit"]': 'Submit',
+		'input[type="reset"]': 'Reset',
+		'summary': 'Details',
+	};
+
+	exports.labelable = [
+		'button',
+		'input:not([type="hidden"])',
+		'keygen',
+		'meter',
+		'output',
+		'progress',
+		'select',
+		'textarea',
+	];
+	});
+
+	// candidates can be passed for performance optimization
+	var getRole = function(el, candidates) {
+		if (el.hasAttribute('role')) {
+			return el.getAttribute('role');
+		}
+		for (var role in constants$1.roles) {
+			var selector = (constants$1.roles[role].selectors || []).join(',');
+			if (selector && (!candidates || candidates.includes(role)) && el.matches(selector)) {
+				return role;
+			}
+		}
+
+		if (!candidates ||
+				candidates.includes('banner') ||
+				candidates.includes('contentinfo')) {
+			if (!el.matches(constants$1.scoped)) {
+				if (el.matches('header')) {
+					return 'banner';
+				}
+				if (el.matches('footer')) {
+					return 'contentinfo';
+				}
+			}
+		}
+	};
+
+	var hasRole = function(el, roles) {
+		var candidates = [].concat.apply([], roles.map(function(role) {
+			return (constants$1.roles[role] || {}).subRoles || [role];
+		}));
+		var actual = getRole(el, candidates);
+		return candidates.includes(actual);
+	};
+
+	var getAttribute = function(el, key) {
+		if (constants$1.attributeStrongMapping.hasOwnProperty(key)) {
+			var value = el[constants$1.attributeStrongMapping[key]];
+			if (value) {
+				return value;
+			}
+		}
+		if (key === 'readonly' && el.contentEditable) {
+			return false;
+		} else if (key === 'invalid' && el.checkValidity) {
+			return !el.checkValidity();
+		} else if (key === 'hidden') {
+			var style = window.getComputedStyle(el);
+			if (style.display === 'none' || style.visibility === 'hidden') {
+				return true;
+			}
+		}
+
+		var type = constants$1.attributes[key];
+		var raw = el.getAttribute('aria-' + key);
+
+		if (raw) {
+			if (type === 'bool') {
+				return raw === 'true';
+			} else if (type === 'tristate') {
+				return raw === 'true' ? true : raw === 'false' ? false : 'mixed';
+			} else if (type === 'bool-undefined') {
+				return raw === 'true' ? true : raw === 'false' ? false : undefined;
+			} else if (type === 'id-list') {
+				return raw.split(/\s+/);
+			} else if (type === 'integer') {
+				return parseInt(raw, 10);
+			} else if (type === 'number') {
+				return parseFloat(raw);
+			} else if (type === 'token-list') {
+				return raw.split(/\s+/);
+			} else {
+				return raw;
+			}
+		}
+
+		// TODO
+		// autocomplete
+		// contextmenu -> aria-haspopup
+		// indeterminate -> aria-checked="mixed"
+		// list -> aria-controls
+
+		if (key === 'level') {
+			for (var i = 1; i <= 6; i++) {
+				if (el.tagName.toLowerCase() === 'h' + i) {
+					return i;
+				}
+			}
+		} else if (constants$1.attributeWeakMapping.hasOwnProperty(key)) {
+			return el[constants$1.attributeWeakMapping[key]];
+		}
+
+		if (key in constants$1.attrsWithDefaults) {
+			var role = getRole(el);
+			var defaults = (constants$1.roles[role] || {}).defaults;
+			if (defaults && defaults.hasOwnProperty(key)) {
+				return defaults[key];
+			}
+		}
+
+		if (type === 'bool' || type === 'tristate') {
+			return false;
+		}
+	};
+
+	var attrs = {
+		getRole: getRole,
+		hasRole: hasRole,
+		getAttribute: getAttribute,
+	};
+
+	var _getOwner = function(node) {
+		if (node.nodeType === node.ELEMENT_NODE && node.id) {
+			var owner = document.querySelector('[aria-owns~="' + node.id + '"]');
+			if (owner) {
+				return owner;
+			}
+		}
+	};
+
+	var _getParentNode = function(node) {
+		return _getOwner(node) || node.parentNode;
+	};
+
+	var detectLoop = function(node) {
+		var tmp = _getParentNode(node);
+		while (tmp) {
+			if (tmp === node) {
+				return true;
+			}
+			tmp = _getParentNode(tmp);
+		}
+	};
+
+	var getOwner = function(node) {
+		if (node.nodeType === node.ELEMENT_NODE && node.id) {
+			var owner = document.querySelector('[aria-owns~="' + node.id + '"]');
+			if (owner && !detectLoop(node)) {
+				return owner;
+			}
+		}
+	};
+
+	var getParentNode = function(node) {
+		return getOwner(node) || node.parentNode;
+	};
+
+	var isHidden = function(node) {
+		return node.nodeType === node.ELEMENT_NODE && attrs.getAttribute(node, 'hidden');
+	};
+
+	var getChildNodes = function(node) {
+		var childNodes = [];
+
+		for (var i = 0; i < node.childNodes.length; i++) {
+			var child = node.childNodes[i];
+			if (!getOwner(child) && !isHidden(child)) {
+				childNodes.push(child);
+			}
+		}
+
+		if (node.nodeType === node.ELEMENT_NODE) {
+			var owns = attrs.getAttribute(node, 'owns') || [];
+			for (var i = 0; i < owns.length; i++) {
+				var child = document.getElementById(owns[i]);
+				// double check with getOwner for consistency
+				if (child && getOwner(child) === node && !isHidden(child)) {
+					childNodes.push(child);
+				}
+			}
+		}
+
+		return childNodes;
+	};
+
+	var walk = function(root, fn) {
+		fn(root);
+		getChildNodes(root).forEach(function(child) {
+			walk(child, fn);
+		});
+	};
+
+	var searchUp = function(node, test) {
+		var candidate = getParentNode(node);
+		if (candidate) {
+			if (test(candidate)) {
+				return candidate;
+			} else {
+				return searchUp(candidate, test);
+			}
+		}
+	};
+
+	var atree = {
+		'getParentNode': getParentNode,
+		'getChildNodes': getChildNodes,
+		'walk': walk,
+		'searchUp': searchUp,
+	};
+
+	var matches = function(el, selector) {
+		var actual;
+
+		if (selector.substr(0, 1) === ':') {
+			var attr = selector.substr(1);
+			return attrs.getAttribute(el, attr);
+		} else if (selector.substr(0, 1) === '[') {
+			var match = /\[([a-z]+)="(.*)"\]/.exec(selector);
+			actual = attrs.getAttribute(el, match[1]);
+			var rawValue = match[2];
+			return actual.toString() === rawValue;
+		} else {
+			return attrs.hasRole(el, selector.split(','));
+		}
+	};
+
+	var _querySelector = function(all) {
+		return function(root, role) {
+			var results = [];
+			try {
+				atree.walk(root, function(node) {
+					if (node.nodeType === node.ELEMENT_NODE) {
+						// FIXME: skip hidden elements
+						if (matches(node, role)) {
+							results.push(node);
+							if (!all) {
+								throw 'StopIteration';
+							}
+						}
+					}
+				});
+			} catch (e) {
+				if (e !== 'StopIteration') {
+					throw e;
+				}
+			}
+			return all ? results : results[0];
+		};
+	};
+
+	var closest = function(el, selector) {
+		return atree.searchUp(el, function(candidate) {
+			if (candidate.nodeType === candidate.ELEMENT_NODE) {
+				return matches(candidate, selector);
+			}
+		});
+	};
+
+	var query = {
+		getRole: function(el) {
+			return attrs.getRole(el);
+		},
+		getAttribute: attrs.getAttribute,
+		matches: matches,
+		querySelector: _querySelector(),
+		querySelectorAll: _querySelector(true),
+		closest: closest,
+	};
+
+	var getPseudoContent = function(node, selector) {
+		var styles = window.getComputedStyle(node, selector);
+		var ret = styles.getPropertyValue('content');
+		var inline = styles.display.substr(0, 6) === 'inline';
+		if (!ret) {
+			return '';
+		}
+		if (ret.substr(0, 1) !== '"') {
+			return '';
+		} else {
+			if (inline) {
+				return ret.slice(1, -1);
+			} else {
+				return ' ' + ret.slice(1, -1) + ' ';
+			}
+		}
+	};
+
+	var getContent = function(root, visited) {
+		var children = atree.getChildNodes(root);
+
+		var ret = '';
+		for (var i = 0; i < children.length; i++) {
+			var node = children[i];
+			if (node.nodeType === node.TEXT_NODE) {
+				ret += node.textContent;
+			} else if (node.nodeType === node.ELEMENT_NODE) {
+				if (node.tagName.toLowerCase() === 'br') {
+					ret += '\n';
+				} else if (window.getComputedStyle(node).display.substr(0, 6) === 'inline' &&
+						node.tagName.toLowerCase() !== 'input' &&
+						node.tagName.toLowerCase() !== 'img') {  // https://github.com/w3c/accname/issues/3
+					ret += getName(node, true, visited);
+				} else {
+					ret += ' ' + getName(node, true, visited) + ' ';
+				}
+			}
+		}
+
+		return ret;
+	};
+
+	var allowNameFromContent = function(el) {
+		var role = query.getRole(el);
+		return (constants$1.roles[role] || {}).nameFromContents;
+	};
+
+	var isLabelable$1 = function(el) {
+		var selector = constants$1.labelable.join(',');
+		return el.matches(selector);
+	};
+
+	var isInLabelForOtherWidget = function(el) {
+		var label = el.parentElement.closest('label');
+		return label && !Array.prototype.includes.call(el.labels, label);
+	};
+
+	var getName = function(el, recursive, visited, directReference) {
+		var ret = '';
+
+		visited = visited || [];
+		if (visited.includes(el)) {
+			if (!directReference) {
+				return '';
+			}
+		} else {
+			visited.push(el);
+		}
+
+		// A
+		// handled in atree
+
+		// B
+		if (!recursive && el.matches('[aria-labelledby]')) {
+			var ids = el.getAttribute('aria-labelledby').split(/\s+/);
+			var strings = ids.map(function(id) {
+				var label = document.getElementById(id);
+				return label ? getName(label, true, visited, true) : '';
+			});
+			ret = strings.join(' ');
+		}
+
+		// C
+		if (!ret.trim() && el.matches('[aria-label]')) {
+			// FIXME: may skip to 2E
+			ret = el.getAttribute('aria-label');
+		}
+
+		// D
+		if (!ret.trim() && !recursive && isLabelable$1(el)) {
+			var strings = Array.prototype.map.call(el.labels, function(label) {
+				return getName(label, true, visited);
+			});
+			ret = strings.join(' ');
+		}
+		if (!ret.trim()) {
+			ret = el.placeholder || '';
+		}
+		if (!ret.trim()) {
+			ret = el.alt || '';
+		}
+		if (!ret.trim() && el.matches('abbr,acronym') && el.title) {
+			ret = el.title;
+		}
+		if (!ret.trim()) {
+			for (var selector in constants$1.nameFromDescendant) {
+				if (el.matches(selector)) {
+					var descendant = el.querySelector(constants$1.nameFromDescendant[selector]);
+					if (descendant) {
+						ret = getName(descendant, true, visited);
+					}
+				}
+			}
+		}
+
+		// E
+		if (!ret.trim() && (recursive || isInLabelForOtherWidget(el) || query.matches(el, 'button'))) {
+			if (query.matches(el, 'textbox,button,combobox,listbox,range')) {
+				if (query.matches(el, 'textbox,button')) {
+					ret = el.value || el.textContent;
+				} else if (query.matches(el, 'combobox,listbox')) {
+					var selected = query.querySelector(el, ':selected') || query.querySelector(el, 'option');
+					if (selected) {
+						ret = getName(selected, recursive, visited);
+					} else {
+						ret = el.value || '';
+					}
+				} else if (query.matches(el, 'range')) {
+					ret = '' + (query.getAttribute(el, 'valuetext') || query.getAttribute(el, 'valuenow') || el.value);
+				}
+			}
+		}
+
+		// F
+		// FIXME: menu is not mentioned in the spec
+		if (!ret.trim() && (recursive || allowNameFromContent(el) || el.closest('label')) && !query.matches(el, 'menu')) {
+			ret = getContent(el, visited);
+		}
+
+		if (!ret.trim()) {
+			for (var selector in constants$1.nameDefaults) {
+				if (el.matches(selector)) {
+					ret = constants$1.nameDefaults[selector];
+				}
+			}
+		}
+
+		// G/H
+		// handled in getContent
+
+		// I
+		// FIXME: presentation not mentioned in the spec
+		if (!ret.trim() && !query.matches(el, 'presentation')) {
+			ret = el.title || '';
+		}
+
+		var before = getPseudoContent(el, ':before');
+		var after = getPseudoContent(el, ':after');
+		return before + ret + after;
+	};
+
+	var getNameTrimmed = function(el) {
+		return getName(el).replace(/\s+/g, ' ').trim();
+	};
+
+	var getDescription = function(el) {
+		var ret = '';
+
+		if (el.matches('[aria-describedby]')) {
+			var ids = el.getAttribute('aria-describedby').split(/\s+/);
+			var strings = ids.map(function(id) {
+				var label = document.getElementById(id);
+				return label ? getName(label, true) : '';
+			});
+			ret = strings.join(' ');
+		} else if (el.title) {
+			ret = el.title;
+		} else if (el.placeholder) {
+			ret = el.placeholder;
+		}
+
+		ret = (ret || '').trim().replace(/\s+/g, ' ');
+
+		if (ret === getNameTrimmed(el)) {
+			ret = '';
+		}
+
+		return ret;
+	};
+
+	var name = {
+		getName: getNameTrimmed,
+		getDescription: getDescription,
+	};
+
+	var ariaApi = {
+		getRole: query.getRole,
+		getAttribute: query.getAttribute,
+		getName: name.getName,
+		getDescription: name.getDescription,
+
+		matches: query.matches,
+		querySelector: query.querySelector,
+		querySelectorAll: query.querySelectorAll,
+		closest: query.closest,
+
+		getParentNode: atree.getParentNode,
+		getChildNodes: atree.getChildNodes,
+	};
+
+	// import constants from './constants';
+	// import {isContained} from './utils';
+
+	function getName$1(elem) {
+	    var aName = ariaApi.getName(elem);
+
+	    // if(aName && isContained(elem))
+	    //     return (elem.matches(constants.noname)) ? '' : aName;
+
+	    return aName;
+	}
+
+	function scanner(elem, violationsList) {
+	    if (!elem) return;
+
+	    if (elem.hasChildNodes()) {
+	        var children = elem.childNodes;
+
+	        for (var i = 0; i < children.length; i++) {
+	            var childNode = children[i];
+
+	            if(!childNode) continue;
+
+	            var childNodeTagName = childNode.tagName && childNode.tagName.toLowerCase();
+	            var childNodeTypeName = (childNode.getAttribute && childNode.getAttribute('type') && childNode.getAttribute('type').toLowerCase()) || 'text';
+
+	            if (!isElementAccessible(childNode)) {
+	                continue;
+	            } else if (!isActionable(childNode))
+	                scanner(childNode, violationsList); //recurse
+	            else {
+	                //TODO - skip this for LABEL node
+	                var oAName = getName$1(childNode);
+	                var oLabel = getLabel(childNode);
+	                
+	                var aName = sanitize(oAName);
+	                var label = sanitize(oLabel);
+	                var isMatching = false;
+
+	                if (childNodeTagName === 'input' && constants.inputs.indexOf(childNodeTypeName) !== -1) {
+	                    if (label && !aName)
+	                        isMatching = true;
+
+	                } else if (isContained(childNode)) {
+	                    if ((!label && aName) || (label && !aName))
+	                        isMatching = true;
+	                }
+
+	                if (!isMatching) {
+	                    if (aName && aName.indexOf(label) !== -1) {
+	                        isMatching = true;
+	                    } else if (label === aName) {
+	                        isMatching = true;
+	                    }
+	                }
+
+
+	                if (!isMatching) {
+	                    violationsList.push({
+	                        //type: 'Label In Name violation',
+	                        message: 'Accessible name "' + oAName + '" does not match with the label "' + oLabel + '"',
+	                        element: childNode
+	                    });
+	                }
+
+	            }
+
+	        }
+
+	    }
+
+	}
+
+	function scan(elem) {
+		const violationsList = [];
+
+	    scanner(elem || document.body, violationsList); //kick-off
+
+	    console.group("Label In Name violations: " + violationsList.length);
+	    for (var v = 0; v < violationsList.length; v++) {
+	        console.group('');
+	        console.log(violationsList[v].element);
+	        console.warn(violationsList[v].message);
+	        console.groupEnd('');
+	    }
+	    console.groupEnd();
+	}
+
+	var index = {
+		scan: scan
+	};
+
+	return index;
+
+}());
